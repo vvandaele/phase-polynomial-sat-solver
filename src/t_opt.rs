@@ -471,6 +471,33 @@ pub fn solve(table: Vec<Vec<u8>>, t_count: usize) -> Option<Vec<Vec<u8>>> {
         }
     }
 
+    // Reducing solution space by forcing a lexicographic ordering on columns
+    for c in 0..t_count - 1 {
+        let mut eq = s.new_var();
+        s.add_clause(&[eq]);
+        
+        for r in 0..num_rows {
+            let x = vars[r][c];
+            let y = vars[r][c + 1];
+            
+            // if equal so far, then x <= y
+            s.add_clause(&[!eq, !x, y]);
+            
+            // update eq: eq = (eq ∧ (x = y))
+            if r < num_rows - 1 {
+                let eq_next = s.new_var();
+                // if eq_next is true, then eq was true and x = y
+                s.add_clause(&[!eq_next, eq]);
+                s.add_clause(&[!eq_next, !x, y]);
+                s.add_clause(&[!eq_next, !y, x]);
+                // if eq is true and x = y, then eq_next must be true
+                s.add_clause(&[!eq, !x, !y, eq_next]);
+                s.add_clause(&[!eq, x, y, eq_next]);
+                eq = eq_next;
+            }
+        }
+    }
+    
     println!("Solving...");
     if s.solve() != Lbool::True { return None; }
 
